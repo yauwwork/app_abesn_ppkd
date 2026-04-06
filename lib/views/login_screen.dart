@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'package:app_abesn_ppkd/views/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-
 import '../utils/colors_app.dart';
 import 'register_screen.dart';
 
@@ -22,8 +22,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> login() async {
     setState(() => isLoading = true);
+
+    // simulasi loading
     await Future.delayed(const Duration(seconds: 1));
+
     setState(() => isLoading = false);
+
+    // 🔥 PINDAH KE HOME
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
   }
 
   Widget buildInput({
@@ -78,13 +89,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF0D47A1),
-                    Color(0xFF2F80ED),
-                  ],
+                  colors: [Color(0xFF0D47A1), Color(0xFF2F80ED)],
                 ),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(40),
+                  bottomRight: Radius.circular(40),
                 ),
               ),
               child: Column(
@@ -95,8 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.calendar_today,
-                        color: Colors.white),
+                    child: const Icon(
+                      Icons.calendar_today,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -130,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.black.withOpacity(0.05),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
-                    )
+                    ),
                   ],
                 ),
                 child: Column(
@@ -138,8 +149,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const Text(
                       "Welcome back! 👋",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     const Text("Sign in to your account to continue"),
@@ -183,15 +196,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF0D47A1),
-                              Color(0xFF2F80ED),
-                            ],
+                            colors: [Color(0xFF0D47A1), Color(0xFF2F80ED)],
                           ),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: ElevatedButton(
                           onPressed: isLoading ? null : login,
+
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -199,8 +210,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: isLoading
                               ? const CircularProgressIndicator(
-                                  color: Colors.white)
-                              : const Text("Sign In", style: TextStyle(color: AppColors.textSecondary),),
+                                  color: Colors.white,
+                                )
+                              : const Text(
+                                  "Sign In",
+                                  style: TextStyle(color: Color(0xffffffff)),
+                                ),
                         ),
                       ),
                     ),
@@ -248,11 +263,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),

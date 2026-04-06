@@ -12,5 +12,16 @@ class AppColors {
 
   static const border = Color(0xFFE5E7EB);
 
-  static const checkbox = Color(0xFF374151);
+  // 🔥 tambahan dari UI lo
+  static const gradientStart = Color(0xFF1E5BB8);
+  static const gradientEnd = Color(0xFF2F80ED);
+
+  static const success = Color(0xFF22C55E);
+  static const warning = Color(0xFFF59E0B);
+  static const danger = Color(0xFFEF4444);
+
+  static const info = Color(0xFF3B82F6);
+  static const purple = Color(0xFF8B5CF6);
+
+  static const lightBlueCard = Color.fromARGB(255, 235, 250, 252);
 }

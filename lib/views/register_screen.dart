@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'package:app_abesn_ppkd/utils/colors_app.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../utils/colors_app.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,9 +24,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> register() async {
     if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password tidak sama")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Password tidak sama")));
       return;
     }
 
@@ -53,46 +53,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-
-        // simpan token
         await prefs.setString("token", data["token"]);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Register berhasil")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Register berhasil")));
 
-        Navigator.pop(context); // balik ke login
+        Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data["message"] ?? "Register gagal")),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Terjadi error")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Terjadi error")));
     }
 
     setState(() => isLoading = false);
   }
 
-  Widget buildInput(String hint, TextEditingController controller,
-      {bool isPassword = false, bool obscure = false, VoidCallback? toggle}) {
+  Widget buildInput(
+    String hint,
+    TextEditingController controller, {
+    bool isPassword = false,
+    bool obscure = false,
+    VoidCallback? toggle,
+  }) {
     return TextField(
       controller: controller,
       obscureText: obscure,
       decoration: InputDecoration(
         hintText: hint,
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(obscure
-                    ? Icons.visibility
-                    : Icons.visibility_off),
+                icon: Icon(
+                  obscure ? Icons.visibility : Icons.visibility_off,
+                  size: 20,
+                ),
                 onPressed: toggle,
               )
             : null,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -102,49 +113,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
+      body: Stack(
         children: [
           // HEADER
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(top: 70, bottom: 30),
+            height: 220,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.primaryDark, AppColors.primary],
-              ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                ),
-              ],
+            child: SafeArea(
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  ),
+                ],
+              ),
             ),
           ),
 
-          // FORM
-          Expanded(
+          // CARD
+          Align(
+            alignment: Alignment.bottomCenter,
             child: Container(
-              margin: const EdgeInsets.all(16),
+              height: MediaQuery.of(context).size.height * 0.78,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.card,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
               child: ListView(
                 children: [
-                  const Text("Create Account ✨",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  // drag indicator
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+
+                  const Text(
+                    "Create Account ✨",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
 
                   const SizedBox(height: 5),
-                  const Text("Fill in your details to get started"),
+                  Text(
+                    "Fill in your details to get started",
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 25),
 
                   buildInput("Full Name", nameController),
                   const SizedBox(height: 15),
@@ -152,25 +190,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   buildInput("Email Address", emailController),
                   const SizedBox(height: 15),
 
-                  buildInput("Min. 8 characters", passwordController,
-                      isPassword: true,
-                      obscure: isObscure1,
-                      toggle: () {
-                        setState(() => isObscure1 = !isObscure1);
-                      }),
+                  buildInput(
+                    "Min. 8 characters",
+                    passwordController,
+                    isPassword: true,
+                    obscure: isObscure1,
+                    toggle: () {
+                      setState(() => isObscure1 = !isObscure1);
+                    },
+                  ),
 
                   const SizedBox(height: 15),
 
-                  buildInput("Repeat your password", confirmPasswordController,
-                      isPassword: true,
-                      obscure: isObscure2,
-                      toggle: () {
-                        setState(() => isObscure2 = !isObscure2);
-                      }),
+                  buildInput(
+                    "Repeat your password",
+                    confirmPasswordController,
+                    isPassword: true,
+                    obscure: isObscure2,
+                    toggle: () {
+                      setState(() => isObscure2 = !isObscure2);
+                    },
+                  ),
 
                   const SizedBox(height: 15),
 
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Checkbox(
                         value: isChecked,
@@ -180,27 +225,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const Expanded(
                         child: Text(
-                            "I agree to the Terms of Service and Privacy Policy"),
-                      )
+                          "I agree to the Terms of Service and Privacy Policy",
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
                     ],
                   ),
 
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : register,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 5,
                       ),
                       child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("Create Account"),
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "Create Account",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.background,
+                              ),
+                            ),
                     ),
                   ),
 
@@ -211,11 +273,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () => Navigator.pop(context),
                       child: const Text("Already have an account? Sign In"),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
