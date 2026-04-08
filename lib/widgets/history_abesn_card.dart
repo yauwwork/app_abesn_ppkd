@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app_abesn_ppkd/utils/colors_app.dart';
 
 class HistoryCard extends StatelessWidget {
   final String date;
@@ -7,7 +8,6 @@ class HistoryCard extends StatelessWidget {
   final String checkOut;
   final String duration;
   final String status;
-  final Color statusColor;
   final bool isWeekend;
 
   const HistoryCard({
@@ -18,12 +18,36 @@ class HistoryCard extends StatelessWidget {
     required this.checkOut,
     required this.duration,
     required this.status,
-    required this.statusColor,
     required this.isWeekend,
   });
 
+  // 🔥 SATU SUMBER LOGIC (diambil dari ActivityCard lo)
+  Color getStatusColor() {
+    switch (status) {
+      case "Late":
+        return AppColors.warning;
+      case "Hadir":
+        return AppColors.success;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData getStatusIcon() {
+    switch (status) {
+      case "Late":
+        return Icons.access_time;
+      case "Hadir":
+        return Icons.check_circle;
+      default:
+        return Icons.info;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final statusColor = getStatusColor();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -46,6 +70,7 @@ class HistoryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 🔥 HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -66,6 +91,8 @@ class HistoryCard extends StatelessWidget {
                     ),
                   ],
                 ),
+
+                // 🔥 STATUS BADGE (ambil logic dari ActivityCard)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -75,18 +102,27 @@ class HistoryCard extends StatelessWidget {
                     color: statusColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(getStatusIcon(), size: 14, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 18),
+
+            // 🔥 TIME INFO
             Row(
               children: [
                 const Icon(Icons.login, color: Colors.green, size: 18),

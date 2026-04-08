@@ -1,8 +1,7 @@
+import 'package:app_abesn_ppkd/models/screen_models/permission_model.dart';
 import 'package:app_abesn_ppkd/utils/colors_app.dart';
 import 'package:flutter/material.dart';
-import '../widgets/permission_card.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 
 class PermissionRequestScreen extends StatefulWidget {
   const PermissionRequestScreen({super.key});
@@ -13,63 +12,126 @@ class PermissionRequestScreen extends StatefulWidget {
 }
 
 class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
-  final List<Map<String, dynamic>> dummyRequests = [
-    {
-      'title': 'Annual Leave',
-      'date': 'April 5, 2026',
-      'reason': 'Family vacation',
-      'submittedDate': 'Mar 28, 2026',
-      'status': 'Approved',
-      'statusColor': Colors.green,
-    },
-    {
-      'title': 'Personal Leave',
-      'date': 'April 10, 2026',
-      'reason': 'Personal affairs',
-      'submittedDate': 'Apr 1, 2026',
-      'status': 'Pending',
-      'statusColor': Colors.orange,
-    },
-    {
-      'title': 'Sick Leave',
-      'date': 'April 15, 2026',
-      'reason': 'Fever and headache',
-      'submittedDate': 'Apr 10, 2026',
-      'status': 'Rejected',
-      'statusColor': Colors.red,
-    },
-  ];
+  // 🔥 WARNA STATUS DINAMIS
+  Color getStatusColor(String status) {
+    switch (status) {
+      case "Approved":
+        return Colors.green;
+      case "Rejected":
+        return Colors.red;
+      case "Pending":
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBlueCard,
-      // appBar: AppBar(
-      //   backgroundColor: const Color(0xffEEF3F6),
-      //   elevation: 0,
-      //   centerTitle: true,
-      //   title: const Text(
-      //     'Permission Request',
-      //     style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-      //   ),
-      // ),
       body: SafeArea(
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: dummyRequests.length,
-          itemBuilder: (context, index) {
-            final item = dummyRequests[index];
+        child: permissionList.isEmpty
+            ? const Center(
+                child: Text(
+                  "No requests yet",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: permissionList.length,
+                itemBuilder: (context, index) {
+                  final item = permissionList[index];
+                  final statusColor = getStatusColor(item.status);
 
-            return PermissionCard(
-              title: item['title'] as String,
-              date: item['date'] as String,
-              reason: item['reason'] as String,
-              submittedDate: item['submittedDate'] as String,
-              status: item['status'] as String,
-              statusColor: item['statusColor'] as Color,
-            );
-          },
-        ),
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 🔥 HEADER
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              item.type,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                item.status,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        // 🔥 DATE RANGE
+                        Text("${item.startDate} - ${item.endDate}"),
+
+                        const SizedBox(height: 4),
+
+                        // 🔥 REASON
+                        Text(item.reason),
+
+                        // 🔥 NOTES (optional)
+                        if (item.notes.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.notes,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+
+                        // 🔥 IMAGE (optional)
+                        if (item.imagePath != null) ...[
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.file(
+                              File(item.imagePath!),
+                              height: 100,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

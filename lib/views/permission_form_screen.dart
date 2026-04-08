@@ -3,6 +3,7 @@ import 'package:app_abesn_ppkd/views/permission_request_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:app_abesn_ppkd/models/screen_models/permission_model.dart';
 
 class PermissionFormScreen extends StatefulWidget {
   const PermissionFormScreen({super.key});
@@ -67,7 +68,10 @@ class _PermissionFormScreenState extends State<PermissionFormScreen> {
           leading: const BackButton(color: AppColors.card),
           title: const Text(
             "Leave Request",
-            style: TextStyle(color: AppColors.card),
+            style: TextStyle(
+              color: AppColors.card,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           bottom: const TabBar(
             indicatorColor: Colors.white,
@@ -203,7 +207,51 @@ class _PermissionFormScreenState extends State<PermissionFormScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // 🔥 VALIDASI
+                  if (startDateController.text.isEmpty ||
+                      endDateController.text.isEmpty ||
+                      reasonController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please fill all required fields"),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // 🔥 SIMPAN DATA
+                  permissionList.add(
+                    PermissionModel(
+                      type: selectedLeaveType,
+                      startDate: startDateController.text,
+                      endDate: endDateController.text,
+                      reason: reasonController.text,
+                      notes: notesController.text,
+                      status: "Pending",
+                      imagePath: selectedImage?.path,
+                    ),
+                  );
+
+                  // 🔥 RESET FORM
+                  startDateController.clear();
+                  endDateController.clear();
+                  reasonController.clear();
+                  notesController.clear();
+
+                  setState(() {
+                    selectedImage = null;
+                  });
+
+                  // 🔥 PINDAH KE TAB "MY REQUEST"
+                  DefaultTabController.of(context).animateTo(1);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Request submitted successfully"),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
