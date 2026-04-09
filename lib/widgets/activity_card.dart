@@ -13,6 +13,20 @@ class ActivityCard extends StatelessWidget {
     required this.status,
   });
 
+  String mapStatusToEnglish(String? status, String? checkInTime) {
+  // 🔥 kalau izin
+  if (status == "izin") return "Absent";
+
+  // 🔥 kalau gak ada checkin
+  if (checkInTime == null) return "Absent";
+
+  // 🔥 cek telat
+  final hour = int.parse(checkInTime.split(":")[0]);
+  if (hour > 8) return "Late";
+
+  return "Present";
+}
+
   @override
   Widget build(BuildContext context) {
     Color statusColor;
@@ -24,7 +38,7 @@ class ActivityCard extends StatelessWidget {
         statusColor = AppColors.warning;
         icon = Icons.access_time;
         break;
-      case "Hadir":
+      case "Present":
         statusColor = AppColors.success;
         icon = Icons.check_circle;
         break;

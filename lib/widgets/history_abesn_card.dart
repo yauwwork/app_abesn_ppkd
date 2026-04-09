@@ -8,6 +8,7 @@ class HistoryCard extends StatelessWidget {
   final String checkOut;
   final String duration;
   final String status;
+  final String location; // 🔥 NEW
   final bool isWeekend;
 
   const HistoryCard({
@@ -18,16 +19,18 @@ class HistoryCard extends StatelessWidget {
     required this.checkOut,
     required this.duration,
     required this.status,
+    required this.location,
     required this.isWeekend,
   });
 
-  // 🔥 SATU SUMBER LOGIC (diambil dari ActivityCard lo)
   Color getStatusColor() {
     switch (status) {
       case "Late":
         return AppColors.warning;
-      case "Hadir":
+      case "Present":
         return AppColors.success;
+      case "Absent":
+        return Colors.blue;
       default:
         return Colors.grey;
     }
@@ -37,10 +40,12 @@ class HistoryCard extends StatelessWidget {
     switch (status) {
       case "Late":
         return Icons.access_time;
-      case "Hadir":
+      case "Present":
         return Icons.check_circle;
-      default:
+      case "Absent":
         return Icons.info;
+      default:
+        return Icons.help;
     }
   }
 
@@ -54,109 +59,81 @@ class HistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isWeekend ? const Color(0xffF7F7F7) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isWeekend ? Border.all(color: Colors.grey.shade300) : null,
-        boxShadow: isWeekend
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
       ),
       child: Opacity(
         opacity: isWeekend ? 0.6 : 1,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔥 HEADER
+            /// HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      date,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    Text(date,
+                        style: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text(
-                      day,
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
+                    Text(day,
+                        style: const TextStyle(color: Colors.grey)),
                   ],
                 ),
 
-                // 🔥 STATUS BADGE (ambil logic dari ActivityCard)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
+                    color: statusColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
-                      Icon(getStatusIcon(), size: 14, color: statusColor),
+                      Icon(getStatusIcon(),
+                          size: 14, color: statusColor),
                       const SizedBox(width: 4),
-                      Text(
-                        status,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
+                      Text(status,
+                          style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
-            // 🔥 TIME INFO
+            /// TIME
             Row(
               children: [
                 const Icon(Icons.login, color: Colors.green, size: 18),
                 const SizedBox(width: 6),
-                Text(
-                  checkIn,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
+                Text(checkIn),
                 const SizedBox(width: 20),
-                const Icon(Icons.logout, color: Colors.deepOrange, size: 18),
+                const Icon(Icons.logout, color: Colors.orange, size: 18),
                 const SizedBox(width: 6),
-                Text(
-                  checkOut,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
+                Text(checkOut),
                 const Spacer(),
-                if (duration.isNotEmpty)
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        duration,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                if (duration.isNotEmpty) Text(duration),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            /// 🔥 LOCATION
+            Row(
+              children: [
+                const Icon(Icons.location_on,
+                    size: 16, color: Colors.grey),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    location,
+                    style: const TextStyle(color: Colors.grey),
                   ),
+                ),
               ],
             ),
           ],

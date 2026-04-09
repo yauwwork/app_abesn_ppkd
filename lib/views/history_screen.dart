@@ -1,6 +1,9 @@
 import 'package:app_abesn_ppkd/utils/colors_app.dart';
 import 'package:app_abesn_ppkd/widgets/history_abesn_card.dart';
+import 'package:app_abesn_ppkd/services/history_service.dart';
+import 'package:app_abesn_ppkd/models/screen_models/history_model.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -14,96 +17,93 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   final List<String> filters = ['All', 'Present', 'Late', 'Absent'];
 
-  List<Map<String, dynamic>> historyData = [];
+  List<Data> history = [];
+
+  String getCurrentMonth() {
+    final now = DateTime.now();
+    return DateFormat('MMMM yyyy').format(now).toUpperCase();
+  }
 
   @override
   void initState() {
     super.initState();
-    fetchActivityData();
+    loadHistory();
   }
 
-  // 🔥 SIMULASI DATA DARI ACTIVITY (NANTI GANTI API)
-  Future<void> fetchActivityData() async {
-    // contoh response activity
-    final List<Map<String, dynamic>> activity = [
-      {
-        "date": "2026-04-07",
-        "type": "checkin",
-        "time": "08:00",
-        "status": "Hadir",
-      },
-      {
-        "date": "2026-04-07",
-        "type": "checkout",
-        "time": "17:00",
-        "status": "Hadir",
-      },
-      {
-        "date": "2026-04-05",
-        "type": "checkin",
-        "time": "09:10",
-        "status": "Late",
-      },
-      {
-        "date": "2026-04-05",
-        "type": "checkout",
-        "time": "17:00",
-        "status": "Late",
-      },
-    ];
-
-    // 🔥 GROUP BY DATE
-    Map<String, Map<String, dynamic>> grouped = {};
-
-    for (var item in activity) {
-      String date = item['date'];
-
-      if (!grouped.containsKey(date)) {
-        grouped[date] = {
-          'date': date.substring(8, 10),
-          'day': _getDayName(date),
-          'checkIn': '-',
-          'checkOut': '-',
-          'duration': '',
-          'status': item['status'],
-          'isWeekend': _isWeekend(date),
-        };
-      }
-
-      if (item['type'] == 'checkin') {
-        grouped[date]!['checkIn'] = item['time'];
-      } else if (item['type'] == 'checkout') {
-        grouped[date]!['checkOut'] = item['time'];
-      }
-    }
+  // 🔥 AMBIL DATA DARI API
+  Future<void> loadHistory() async {
+    final result = await HistoryService.getHistory();
 
     setState(() {
-      historyData = grouped.values.toList();
+      history = result;
     });
   }
 
   // 🔥 FILTER
-  List<Map<String, dynamic>> get filteredData {
+  List<Data> get filteredData {
     String selectedFilter = filters[selectedFilterIndex];
 
-    if (selectedFilter == 'All') return historyData;
+    if (selectedFilter == 'All') return history;
 
-    return historyData.where((item) {
+    return history.where((item) {
+      String status = formatStatus(item);
+
       switch (selectedFilter) {
         case 'Present':
-          return item['status'] == 'Hadir';
+          return status == 'Present';
         case 'Late':
-          return item['status'] == 'Late';
+          return status == 'Late';
         case 'Absent':
-          return item['status'] == 'Absent';
+          return status == 'Absent';
         default:
           return true;
       }
     }).toList();
   }
 
-  // 🔥 GET DAY NAME
-  String _getDayName(String date) {
+  // 🔥 FORMAT STATUS
+  String formatStatus(Data item) {
+    if (item.status == "Absent") return "Absent";
+
+    if (item.checkInTime == null) return "Absent";
+
+    final hour = int.parse(item.checkInTime!.split(":")[0]);
+
+    if (hour > 8) return "Late";
+
+    return "Present";
+  }
+
+  // 🔥 FORMAT LOKASI
+  String formatLocation(Data item) {
+    if (item.checkInLat != null && item.checkInLng != null) {
+      return "${item.checkInLat}, ${item.checkInLng}";
+    }
+    return "-";
+  }
+
+  // 🔥 FORMAT DURASI
+  String formatDuration(Data item) {
+    if (item.checkInTime == null || item.checkOutTime == null) return "";
+
+    final inTime = item.checkInTime!.split(":");
+    final outTime = item.checkOutTime!.split(":");
+
+    final inMinutes = int.parse(inTime[0]) * 60 + int.parse(inTime[1]);
+    final outMinutes = int.parse(outTime[0]) * 60 + int.parse(outTime[1]);
+
+    final diff = outMinutes - inMinutes;
+
+    return "${diff ~/ 60}j ${diff % 60}m";
+  }
+
+  // 🔥 FORMAT TANGGAL
+  String formatDate(String date) {
+    DateTime dt = DateTime.parse(date);
+    return "${dt.day}";
+  }
+
+  String getDayName(String date) {
     DateTime dt = DateTime.parse(date);
 
     List<String> days = [
@@ -119,8 +119,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return days[dt.weekday - 1];
   }
 
-  // 🔥 CEK WEEKEND
-  bool _isWeekend(String date) {
+  bool isWeekend(String date) {
     DateTime dt = DateTime.parse(date);
     return dt.weekday == DateTime.saturday || dt.weekday == DateTime.sunday;
   }
@@ -134,11 +133,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'History',
-          style: TextStyle(color: AppColors.card, fontWeight: FontWeight.w700),
-        ),
+        title: const Text('History', style: TextStyle(color: Colors.white)),
       ),
       body: SafeArea(
         child: Padding(
@@ -147,22 +142,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
             children: [
               const SizedBox(height: 20),
 
+              /// 🔍 SEARCH
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
                 ),
-                child: TextField(
-                  decoration: const InputDecoration(
+                child: const TextField(
+                  decoration: InputDecoration(
                     hintText: 'Search by date...',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey),
+                    prefixIcon: Icon(Icons.search),
                     border: InputBorder.none,
                   ),
                 ),
@@ -170,6 +159,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
               const SizedBox(height: 14),
 
+              /// 🔥 FILTER
               SizedBox(
                 height: 38,
                 child: ListView.separated(
@@ -212,12 +202,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
               const SizedBox(height: 20),
 
+              /// 🔥 HEADER
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'APRIL 2026',
-                    style: TextStyle(
+                  Text(
+                    getCurrentMonth(),
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: Colors.black54,
                     ),
@@ -231,22 +222,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
               const SizedBox(height: 14),
 
+              /// 🔥 LIST DATA
               Expanded(
-                child: ListView.builder(
-                  itemCount: data.length,
-                  itemBuilder: (context, index) {
-                    final item = data[index];
+                child: RefreshIndicator(
+                  onRefresh: loadHistory,
+                  child: ListView.builder(
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final item = data[index];
 
-                    return HistoryCard(
-                      date: item['date'],
-                      day: item['day'],
-                      checkIn: item['checkIn'],
-                      checkOut: item['checkOut'],
-                      duration: item['duration'],
-                      status: item['status'],
-                      isWeekend: item['isWeekend'],
-                    );
-                  },
+                      return HistoryCard(
+                        date: formatDate(item.attendanceDate),
+                        day: getDayName(item.attendanceDate),
+                        checkIn: item.checkInTime ?? "-",
+                        checkOut: item.checkOutTime ?? "-",
+                        duration: formatDuration(item),
+                        status: formatStatus(item),
+                        location: formatLocation(item),
+                        isWeekend: isWeekend(item.attendanceDate),
+                      );
+                    },
+                  ),
                 ),
               ),
             ],

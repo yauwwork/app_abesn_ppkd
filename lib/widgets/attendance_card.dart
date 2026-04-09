@@ -1,7 +1,9 @@
 import 'package:app_abesn_ppkd/utils/colors_app.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
-class AttendanceCard extends StatelessWidget {
+class AttendanceCard extends StatefulWidget {
   final VoidCallback onCheckIn;
   final VoidCallback onCheckOut;
 
@@ -19,6 +21,36 @@ class AttendanceCard extends StatelessWidget {
   });
 
   @override
+  State<AttendanceCard> createState() => _AttendanceCardState();
+}
+
+class _AttendanceCardState extends State<AttendanceCard> {
+  LatLng? currentLatLng;
+
+  @override
+  void initState() {
+    super.initState();
+    _getLocation();
+  }
+
+  Future<void> _getLocation() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    setState(() {
+      currentLatLng = LatLng(position.latitude, position.longitude);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -31,7 +63,7 @@ class AttendanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔥 TOP ROW (status + lokasi)
+          /// 🔥 TOP ROW
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -59,11 +91,40 @@ class AttendanceCard extends StatelessWidget {
             ],
           ),
 
+          const SizedBox(height: 16),
+
+          /// 🔥 MINI GOOGLE MAP
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 120,
+              color: Colors.black12,
+              child: currentLatLng == null
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
+                  : GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: currentLatLng!,
+                        zoom: 16,
+                      ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId("current"),
+                          position: currentLatLng!,
+                        ),
+                      },
+                      zoomControlsEnabled: false,
+                      myLocationButtonEnabled: false,
+                    ),
+            ),
+          ),
+
           const SizedBox(height: 20),
 
-          // 🔥 JAM BESAR
+          /// 🔥 JAM BESAR
           Text(
-            currentTime,
+            widget.currentTime,
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -75,76 +136,70 @@ class AttendanceCard extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // 🔥 CHECK IN & OUT BOX
+          /// 🔥 CHECK IN OUT
           Row(
             children: [
-              Expanded(child: _timeBox("CHECK IN", checkIn)),
+              Expanded(child: _timeBox("CHECK IN", widget.checkIn)),
               const SizedBox(width: 10),
-              Expanded(child: _timeBox("CHECK OUT", checkOut)),
+              Expanded(child: _timeBox("CHECK OUT", widget.checkOut)),
             ],
           ),
 
           const SizedBox(height: 20),
 
-          // 🔥 BUTTONS: CHECK IN DAN CHECK OUT
-          SizedBox(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ElevatedButton(
-                  onPressed: onCheckIn,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.login, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        "Check In",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
+          /// 🔥 BUTTON
+          Column(
+            children: [
+              ElevatedButton(
+                onPressed: widget.onCheckIn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: onCheckOut,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.danger,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.logout, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        "Check Out",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.login, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      "Check In",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: widget.onCheckOut,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      "Check Out",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

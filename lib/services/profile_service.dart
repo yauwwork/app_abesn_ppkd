@@ -12,22 +12,27 @@ class ProfileService {
     try {
       final token = await PreferenceHandler.getToken();
 
+      if (token == null || token.isEmpty) {
+        throw Exception("Token tidak ditemukan, silakan login ulang");
+      }
+
       final response = await http.get(
         Uri.parse(Endpoint.profile),
         headers: {
           "Accept": "application/json",
-          "Authorization": "Bearer ${token ?? ''}",
+          "Authorization": "Bearer $token",
         },
       );
 
-      log("INI RESPONSE ASLI: ${response.body}");
       log("PROFILE STATUS: ${response.statusCode}");
       log("PROFILE BODY: ${response.body}");
 
-      final decoded = jsonDecode(response.body);
+      final decoded = _safeDecode(response.body);
 
       if (response.statusCode == 200) {
         return ProfileModel.fromJson(decoded);
+      } else if (response.statusCode == 401) {
+        throw Exception("Session habis, login ulang");
       } else {
         throw Exception(decoded["message"] ?? "Gagal ambil profil");
       }
@@ -38,31 +43,39 @@ class ProfileService {
   }
 
   // ================= UPDATE PROFILE =================
-  static Future<ProfileModel> updateProfile({
-    required String name,
-    required String email,
-  }) async {
+  static Future<ProfileModel> updateProfile({required String name}) async {
     try {
       final token = await PreferenceHandler.getToken();
+
+      if (token == null || token.isEmpty) {
+        throw Exception("Token tidak ditemukan");
+      }
 
       final response = await http.put(
         Uri.parse(Endpoint.profile),
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "Authorization": "Bearer ${token ?? ''}",
+          "Authorization": "Bearer $token",
         },
-        body: jsonEncode({"name": name, "email": email}),
+        body: jsonEncode({"name": name}),
       );
 
       log("UPDATE PROFILE STATUS: ${response.statusCode}");
       log("UPDATE PROFILE BODY: ${response.body}");
 
-      final decoded = jsonDecode(response.body);
+      final decoded = _safeDecode(response.body);
 
       if (response.statusCode == 200) {
-        await PreferenceHandler.saveUser(name: name, email: email);
-        return ProfileModel.fromJson(decoded);
+        final profile = ProfileModel.fromJson(decoded);
+
+        // 🔥 ambil email dari response / model (AMAN)
+        await PreferenceHandler.saveUser(
+          name: profile.name,
+          email: profile.email,
+        );
+
+        return profile;
       } else {
         throw Exception(decoded["message"] ?? "Gagal update profil");
       }
@@ -77,36 +90,66 @@ class ProfileService {
     try {
       final token = await PreferenceHandler.getToken();
 
-      final request = http.MultipartRequest(
-        'PUT',
+      if (token == null || token.isEmpty) {
+        throw Exception("Token tidak ditemukan");
+      }
+
+      if (!await imageFile.exists()) {
+        throw Exception("File tidak ditemukan");
+      }
+
+      // 🔥 FIX MIME TYPE
+      String extension = imageFile.path.split('.').last.toLowerCase();
+
+      String mimeType;
+      if (extension == "jpg" || extension == "jpeg") {
+        mimeType = "image/jpeg";
+      } else if (extension == "png") {
+        mimeType = "image/png";
+      } else {
+        mimeType = "image/jpeg";
+      }
+
+      // 🔥 BASE64
+      List<int> imageBytes = await imageFile.readAsBytes();
+      log("IMAGE SIZE: ${imageBytes.length}");
+
+      String base64Image = base64Encode(imageBytes);
+
+      final response = await http.put(
         Uri.parse(Endpoint.uploadPhoto),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "profile_photo": "data:$mimeType;base64,$base64Image",
+        }),
       );
-
-      request.headers.addAll({
-        "Accept": "application/json",
-        "Authorization": "Bearer ${token ?? ''}",
-      });
-
-      request.files.add(
-        await http.MultipartFile.fromPath('photo', imageFile.path),
-      );
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
 
       log("UPLOAD PHOTO STATUS: ${response.statusCode}");
       log("UPLOAD PHOTO BODY: ${response.body}");
 
-      final decoded = jsonDecode(response.body);
+      final decoded = _safeDecode(response.body);
 
       if (response.statusCode == 200) {
-        return decoded["data"]["photo"] ?? "";
+        return decoded["data"]?["profile_photo"]?.toString() ?? "";
       } else {
-        throw Exception(decoded["message"] ?? "Gagal upload foto");
+        throw Exception(decoded["message"] ?? response.body);
       }
     } catch (e) {
-      log("ERROR PHOTO: $e");
-      throw Exception("Terjadi kesalahan upload foto");
+      log("ERROR PHOTO DETAIL: $e");
+      throw Exception(e.toString());
+    }
+  }
+
+  // ================= SAFE JSON =================
+  static Map<String, dynamic> _safeDecode(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (e) {
+      return {};
     }
   }
 }

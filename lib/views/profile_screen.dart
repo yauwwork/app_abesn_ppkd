@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:app_abesn_ppkd/models/screen_models/profile_model.dart';
 import 'package:app_abesn_ppkd/utils/colors_app.dart';
+import 'package:app_abesn_ppkd/views/edit_profil_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:app_abesn_ppkd/services/profile_service.dart';
 import 'package:app_abesn_ppkd/utils/shared_preferences.dart';
 import 'package:app_abesn_ppkd/views/login_screen.dart';
 
-// ================= SCREEN =================
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -45,6 +45,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> goToEdit() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+
+    if (result == true) {
+      fetchProfile(); // 🔥 auto refresh
+    }
+  }
+
+  //PHOTO URL HANDLER
+  String getFullPhotoUrl(String? path) {
+    if (path == null || path.isEmpty) {
+      return "";
+    }
+
+    // kalau udah full url → langsung pakai
+    if (path.startsWith("http")) {
+      return path;
+    }
+
+    return "https://appabsensi.mobileprojp.com$path";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +78,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.primary,
         elevation: 0,
         title: const Text("Profile"),
-        actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.edit))],
+        actions: [
+          IconButton(onPressed: goToEdit, icon: const Icon(Icons.edit)),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -95,9 +122,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Stack(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 40,
-                backgroundImage: NetworkImage("https://i.pravatar.cc/300"),
+                backgroundColor: Colors.white,
+                backgroundImage: (user?.photo != null && user!.photo.isNotEmpty)
+                    ? NetworkImage(getFullPhotoUrl(user!.photo))
+                    : null,
+                child: (user?.photo == null || user!.photo.isEmpty)
+                    ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                    : null,
               ),
               Positioned(
                 bottom: 0,
@@ -124,17 +157,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            "Software Engineer",
-            style: TextStyle(color: Colors.white70),
+          Text(
+            user?.position ?? "-",
+            style: const TextStyle(color: Colors.white70),
           ),
-          const Text(
-            "Technology Department",
-            style: TextStyle(color: Colors.white70),
+          Text(
+            "Batch ${user?.batch ?? "-"}",
+            style: const TextStyle(color: Colors.white70),
           ),
           const SizedBox(height: 14),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: goToEdit,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white38,
               shape: RoundedRectangleBorder(
@@ -157,10 +190,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: "PERSONAL INFO",
       children: [
         _infoTile(Icons.email, "Email", user?.email ?? "-"),
-        SizedBox(height: 8),
-        // _infoTile(Icons.phone, "Phone", user?.phone ?? "-"),
+        const SizedBox(height: 8),
         _infoTile(Icons.work, "Position", user?.position ?? "-"),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         _infoTile(Icons.badge, "Batch", user?.batch ?? "-"),
       ],
     );
@@ -169,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ================= ACCOUNT =================
   Widget _accountSection() {
     return _menuCard("ACCOUNT", [
-      _menuItem(Icons.edit, "Edit Profile"),
+      _menuItem(Icons.edit, "Edit Profile", onTap: goToEdit),
       _menuItem(Icons.lock, "Change Password"),
     ]);
   }
@@ -190,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ]);
   }
 
-  // ================= WIDGET REUSABLE =================
+  // ================= COMPONENT =================
   Widget _card({required String title, required List<Widget> children}) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -249,9 +281,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _menuItem(IconData icon, String title, {bool isLogout = false}) {
+  Widget _menuItem(
+    IconData icon,
+    String title, {
+    bool isLogout = false,
+    VoidCallback? onTap,
+  }) {
     return InkWell(
-      onTap: isLogout ? logout : () {},
+      onTap: isLogout ? logout : onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
@@ -271,13 +308,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _divider() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 10),
-      child: Divider(),
     );
   }
 }

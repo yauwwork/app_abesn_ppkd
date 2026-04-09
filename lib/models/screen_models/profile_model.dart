@@ -1,37 +1,34 @@
 class ProfileModel {
   final String name;
-  final String email;
-  final String? phone;
-  final String? position;
-  final String? batch;
-  final String? photo;
+  final String email; // 🔥 tetap original
+  final String phone;
+  final String position;
+  final String batch;
+  final String photo;
 
   ProfileModel({
     required this.name,
     required this.email,
-    this.phone,
-    this.position,
-    this.batch,
-    this.photo,
+    required this.phone,
+    required this.position,
+    required this.batch,
+    required this.photo,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     final data = json["data"] ?? {};
 
     return ProfileModel(
-      name: data["name"] ?? "-",
+      name: data["name"]?.toString() ?? "-",
+
+      // 🔥 EMAIL JANGAN DIUTAK-ATIK
       email: data["email"] ?? "-",
 
-      // 🔥 gak ada di API lo
-      phone: data["no_hp"] ?? "-",
-
-      // 🔥 ambil dari API asli
-      position: data["training_title"] ?? "-",
-
-      // 🔥 ambil dari API asli
-      batch: data["batch_ke"] ?? "-",
-
-      photo: data["profile_photo"],
+      // 🔥 sisanya tetap aman
+      phone: data["no_hp"]?.toString() ?? "-",
+      position: data["training_title"]?.toString() ?? "-",
+      batch: data["batch_ke"]?.toString() ?? "-",
+      photo: data["profile_photo"]?.toString() ?? "",
     );
   }
 }

@@ -200,6 +200,19 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  //ACTIVITY CARD LOGIC
+  String mapStatusToEnglish(String? status, String? checkInTime) {
+    if (status == "izin") return "Absent";
+
+    if (checkInTime == null || checkInTime == "-") return "Absent";
+
+    final hour = int.parse(checkInTime.split(":")[0]);
+
+    if (hour > 8) return "Late";
+
+    return "Present";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,7 +357,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             return ActivityCard(
                               date: e.date,
                               time: "${e.checkIn} - ${e.checkOut}",
-                              status: e.status,
+                              status: mapStatusToEnglish(
+                                e.status,
+                                e.checkIn,
+                              ), // 🔥 FIX
                             );
                           }).toList(),
                         ),
