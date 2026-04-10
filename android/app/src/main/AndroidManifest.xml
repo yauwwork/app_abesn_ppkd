@@ -8,7 +8,7 @@
     <application
         android:label="Absensi PPKD"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
 
         <!-- 🔥 Google Maps API Key (ganti dengan key asli) -->
         <meta-data

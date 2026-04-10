@@ -216,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.lightBlueCard,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -240,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               SizedBox(width: 8),
                               Text(
-                                "AttendEase",
+                                "WorkZen",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,

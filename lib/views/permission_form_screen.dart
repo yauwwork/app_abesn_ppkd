@@ -1,9 +1,7 @@
-import 'package:app_abesn_ppkd/utils/colors_app.dart';
-import 'package:app_abesn_ppkd/views/permission_request_list_screen.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:app_abesn_ppkd/models/screen_models/permission_model.dart';
+import 'package:app_abesn_ppkd/utils/colors_app.dart';
+import 'package:app_abesn_ppkd/services/izin_service.dart';
+import 'package:app_abesn_ppkd/models/screen_models/izin_model.dart';
 
 class PermissionFormScreen extends StatefulWidget {
   const PermissionFormScreen({super.key});
@@ -12,19 +10,35 @@ class PermissionFormScreen extends StatefulWidget {
   State<PermissionFormScreen> createState() => _PermissionFormScreenState();
 }
 
-class _PermissionFormScreenState extends State<PermissionFormScreen> {
-  String selectedLeaveType = 'Sick Leave';
-
+class _PermissionFormScreenState extends State<PermissionFormScreen>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController dateController = TextEditingController();
   final TextEditingController reasonController = TextEditingController();
-  final TextEditingController notesController = TextEditingController();
-  final TextEditingController startDateController = TextEditingController();
-  final TextEditingController endDateController = TextEditingController();
 
-  File? selectedImage;
-  final ImagePicker picker = ImagePicker();
+  final IzinService izinService = IzinService();
 
-  Future<void> _pickDate(TextEditingController controller) async {
-    DateTime? pickedDate = await showDatePicker(
+  bool isLoading = false;
+
+  late TabController _tabController;
+
+  final List<IzinModel> izinList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    dateController.dispose();
+    reasonController.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
@@ -32,239 +46,177 @@ class _PermissionFormScreenState extends State<PermissionFormScreen> {
     );
 
     if (pickedDate != null) {
-      controller.text =
-          "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
       setState(() {
-        selectedImage = File(image.path);
+        dateController.text =
+            "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
       });
     }
   }
 
-  @override
-  void dispose() {
-    reasonController.dispose();
-    notesController.dispose();
-    startDateController.dispose();
-    endDateController.dispose();
-    super.dispose();
+  Future<void> submitIzin() async {
+    if (dateController.text.isEmpty || reasonController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Harap isi semua field")));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final izin = IzinModel(
+        date: dateController.text,
+        alasanIzin: reasonController.text,
+      );
+
+      await izinService.sendIzin(izin);
+
+      setState(() {
+        izinList.insert(0, izin);
+        dateController.clear();
+        reasonController.clear();
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Izin berhasil dikirim")));
+
+      _tabController.animateTo(1);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: AppColors.lightBlueCard,
-        appBar: AppBar(
-          backgroundColor: AppColors.primary,
-          elevation: 0,
-          leading: const BackButton(color: AppColors.card),
-          title: const Text(
-            "Leave Request",
-            style: TextStyle(
-              color: AppColors.card,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          bottom: const TabBar(
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, size: 16, color: Colors.white),
-                    SizedBox(width: 6),
-                    Text("Submit", style: TextStyle(color: AppColors.border)),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.white),
-                    SizedBox(width: 6),
-                    Text(
-                      "My Request",
-                      style: TextStyle(color: AppColors.border),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    return Scaffold(
+      backgroundColor: AppColors.lightBlueCard,
 
-        // 🔥 TAB VIEW
-        body: TabBarView(children: [_buildSubmitForm(), _buildMyRequest()]),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        title: const Text("Permission", style: TextStyle(color: Colors.white)),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          tabs: const [
+            Tab(icon: Icon(Icons.edit), text: "Submit"),
+            Tab(icon: Icon(Icons.list), text: "My Request"),
+          ],
+        ),
+      ),
+
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildForm(), _buildList()],
       ),
     );
   }
 
-  // 🔥 SUBMIT FORM (ISI LAMA LO)
-  Widget _buildSubmitForm() {
+  // ================= CLEAN MODERN FORM =================
+  Widget _buildForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.description_outlined,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Leave Request Form",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Fill in all required fields",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            const Text(
+              "Request Permission",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+
+            const SizedBox(height: 6),
+            Text(
+              "Fill your permission request below",
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
 
             const SizedBox(height: 24),
 
-            _label("Leave Type *"),
-            const SizedBox(height: 8),
-            _dropdown(),
-
-            const SizedBox(height: 16),
-
-            _label("Start Date *"),
-            const SizedBox(height: 8),
-            _input(
-              startDateController,
-              "dd/mm/yyyy",
-              icon: Icons.calendar_today,
+            TextField(
+              controller: dateController,
+              readOnly: true,
+              onTap: _pickDate,
+              decoration: InputDecoration(
+                hintText: "Select date",
+                prefixIcon: const Icon(Icons.calendar_month_outlined),
+                filled: true,
+                fillColor: const Color(0xFFF6F7F9),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            _label("End Date *"),
-            const SizedBox(height: 8),
-            _input(endDateController, "dd/mm/yyyy", icon: Icons.calendar_today),
-
-            const SizedBox(height: 16),
-
-            _label("Reason *"),
-            const SizedBox(height: 8),
-            _input(reasonController, "Brief reason for leave"),
-
-            const SizedBox(height: 16),
-
-            _label("Additional Notes"),
-            const SizedBox(height: 8),
-            _input(
-              notesController,
-              "Add any additional information (optional)",
-              maxLines: 3,
+            TextField(
+              controller: reasonController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: "Write your reason...",
+                filled: true,
+                fillColor: const Color(0xFFF6F7F9),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
 
-            const SizedBox(height: 16),
-
-            _label("Supporting Document"),
-            const SizedBox(height: 8),
-            _uploadBox(),
-
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 48,
               child: ElevatedButton(
-                onPressed: () {
-                  // 🔥 VALIDASI
-                  if (startDateController.text.isEmpty ||
-                      endDateController.text.isEmpty ||
-                      reasonController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please fill all required fields"),
-                      ),
-                    );
-                    return;
-                  }
-
-                  // 🔥 SIMPAN DATA
-                  permissionList.add(
-                    PermissionModel(
-                      type: selectedLeaveType,
-                      startDate: startDateController.text,
-                      endDate: endDateController.text,
-                      reason: reasonController.text,
-                      notes: notesController.text,
-                      status: "Pending",
-                      imagePath: selectedImage?.path,
-                    ),
-                  );
-
-                  // 🔥 RESET FORM
-                  startDateController.clear();
-                  endDateController.clear();
-                  reasonController.clear();
-                  notesController.clear();
-
-                  setState(() {
-                    selectedImage = null;
-                  });
-
-                  // 🔥 PINDAH KE TAB "MY REQUEST"
-                  DefaultTabController.of(context).animateTo(1);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Request submitted successfully"),
-                    ),
-                  );
-                },
+                onPressed: isLoading ? null : submitIzin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  "Submit Request",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Submit Request",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -273,138 +225,96 @@ class _PermissionFormScreenState extends State<PermissionFormScreen> {
     );
   }
 
-  // 🔥 MY REQUEST (DUMMY DULU)
-  Widget _buildMyRequest() {
-    return const PermissionRequestScreen();
-  }
-
-  // ================= COMPONENT =================
-
-  Widget _label(String text) {
-    bool isRequired = text.contains("*");
-
-    return RichText(
-      text: TextSpan(
-        text: text.replaceAll("*", ""),
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        children: isRequired
-            ? [
-                const TextSpan(
-                  text: " *",
-                  style: TextStyle(color: Colors.red),
-                ),
-              ]
-            : [],
-      ),
-    );
-  }
-
-  Widget _input(
-    TextEditingController controller,
-    String hint, {
-    int maxLines = 1,
-    IconData? icon,
-  }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      readOnly: icon != null,
-      onTap: icon != null ? () => _pickDate(controller) : null,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: icon != null ? Icon(icon) : null,
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _dropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedLeaveType,
-          isExpanded: true,
-          items: const [
-            DropdownMenuItem(value: 'Sick Leave', child: Text('Sick Leave')),
-            DropdownMenuItem(
-              value: 'Annual Leave',
-              child: Text('Annual Leave'),
-            ),
-            DropdownMenuItem(
-              value: 'Personal Leave',
-              child: Text('Personal Leave'),
-            ),
-          ],
-          onChanged: (value) {
-            setState(() {
-              selectedLeaveType = value!;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _uploadBox() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          color: Colors.grey.shade50,
-        ),
+  // ================= CLEAN MODERN LIST =================
+  Widget _buildList() {
+    if (izinList.isEmpty) {
+      return Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (selectedImage != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  selectedImage!,
-                  height: 120,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text("Tap to change image", style: TextStyle(fontSize: 12)),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.upload_file, color: AppColors.primary),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                "Tap to upload document",
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                "PDF, JPG, PNG up to 5MB",
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            Icon(Icons.inbox_outlined, size: 60, color: Colors.grey.shade300),
+            const SizedBox(height: 10),
+            Text(
+              "No request yet",
+              style: TextStyle(color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: izinList.length,
+      itemBuilder: (context, index) {
+        final item = izinList[index];
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
               ),
             ],
-          ],
-        ),
-      ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Text(
+                    "Permission Request",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    "Pending",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  Icon(Icons.schedule, size: 14, color: Colors.grey),
+                  const SizedBox(width: 6),
+                  Text(
+                    item.date,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6F7F9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  item.alasanIzin,
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
